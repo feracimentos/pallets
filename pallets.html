@@ -3,39 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pallets Cloud - GS</title>
+<title>Pallets Cloud</title>
 <style>
 body{font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;margin:0}
-h1,h2{color:#333}
 .container{max-width:700px;margin:auto;background:#fff;padding:25px;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,.15)}
 .hidden{display:none}
 button{background:#007bff;color:#fff;border:none;padding:12px 20px;border-radius:4px;margin:6px 0;width:100%;font-size:18px;cursor:pointer;touch-action:manipulation}
 button:active{background:#0056b3}
-input,select{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:4px}
-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
-th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}
-th{background:#f8f9fa}
+input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:4px}
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
 .menu-item{background:#f8f9fa;padding:20px;border-radius:6px;text-align:center;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.2)}
 .menu-item:active{background:#e9ecef}
-.summary-card{background:#f8f9fa;padding:15px;margin-bottom:10px;border-radius:6px}
-.alert{padding:10px;margin-bottom:10px;border-radius:5px}
-.alert-info{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb}
-.alert-success{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-.badge{padding:4px 8px;border-radius:3px;font-size:12px;font-weight:bold}
-.badge-confirmed{background:#d4edda;color:#155724}
-.badge-pending{background:#fff3cd;color:#856404}
-.badge-discrepancy{background:#f8d7da;color:#721c24}
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="loginScreen" class="container">
-  <h1>Sistema Pallets - Cloud</h1>
+  <h1>Pallets Cloud</h1>
   <div class="menu-grid">
     <button class="menu-item" onclick="ir('motorista')">🚛 Motorista</button>
-    <button class="menu-item" onclick="ir('chefe')">👷 Chefe Pátio</button>
+    <button class="menu-item" onclick="ir('chefe')">👷 Chefe</button>
     <button class="menu-item" onclick="ir('admin')">🔧 Admin</button>
   </div>
 </div>
@@ -68,50 +56,39 @@ th{background:#f8f9fa}
   </form>
 </div>
 
-<!-- CHEFE DO PÁTIO -->
+<!-- CHEFE -->
 <div id="chefeScreen" class="container hidden">
   <h1>Chefe do Pátio</h1>
   <div id="pendente"></div>
   <button onclick="voltar()">Voltar</button>
 </div>
 
-<!-- ADMIN / RELATÓRIOS -->
+<!-- ADMIN -->
 <div id="adminScreen" class="container hidden">
-  <h1>Relatórios</h1>
-  <div class="summary-card"><span id="resumo"></span></div>
-  <table id="tbl"><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Qtd</th><th>Status</th><th>Dif</th></tr></thead><tbody></tbody></table>
+  <h1>Relatório</h1>
+  <div id="resumo"></div>
+  <table id="tbl"><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Qtd</th><th>Status</th></tr></thead><tbody></tbody></table>
   <button onclick="voltar()">Voltar</button>
 </div>
 
 <script>
-// ---------- CONFIGURAÇÕES DA PLANILHA ----------
-const SHEET_ID = '1-KpLQ7lGQV2bljN8nj4lV1WfC8hTfcbv8Fhba2sfW7M'; // ← ID da sua planilha
-const SHEET_NAME = 'Página1'; // ← nome da aba
-const SCRIPT_URL = `https://script.google.com/macros/s/AKfycbw8rJqSLJZ1szuXzLU4L3KAHrF1X2BqEPdZgRrzxw6l7C2J4sIhB8lT5O5lVqvI4h7pQ/exec?sheet=${SHEET_NAME}&id=${SHEET_ID`;
+// ---------- CONFIG PLANILHA ----------
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbw8rJqSLJZ1szuXzLU4L3KAHrF1X2BqEPdZgRrzxw6l7C2J4sIhB8lT5O5lVqvI4h7pQ/exec';
 
 // ---------- UTIL ----------
 function $(id){return document.getElementById(id);}
 function hideAll(){document.querySelectorAll('.container').forEach(d=>d.classList.add('hidden'));}
 function voltar(){hideAll();$('loginScreen').classList.remove('hidden');}
-function ir(p){hideAll();$(p+'Screen').classList.remove('hidden');if(p==='chefe')listaPendente();if(p==='admin')relatorio();}
+function ir(p){hideAll();$(p+'Screen').classList.remove('hidden');if(p==='chefe')lista();if(p==='admin')relat();}
 function tela(t){hideAll();$(t+'Screen').classList.remove('hidden');}
 
 // ---------- REGISTRAR ----------
-function registrar(ev,tipo){ev.preventDefault();const cliente=tipo==='saída'?$('sCliente').value:$('rCliente').value);const qtd=tipo==='saída'?parseInt($('sQtd').value):parseInt($('rQtd').value);const data=new Date().toLocaleString('pt-BR');gravarSheet({id:Date.now(),data,cliente,tipo,qtd,status:'pendente',dif:''});alert('Registrado na nuvem! Aguarda confirmação.');ev.target.reset();ir('motorista');}
+function registrar(ev,tipo){ev.preventDefault();const cliente=tipo==='saída'?$('sCliente').value:$('rCliente').value;const qtd=tipo==='saída'?parseInt($('sQtd').value):parseInt($('rQtd').value);const data=new Date().toLocaleString('pt-BR');fetch(SHEET_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Date.now(),data,cliente,tipo,qtd,status:'pendente'})}).then(r=>r.text()).then(d=>{if(d==='ok')alert('Salvo na nuvem!');else alert('Erro');});ev.target.reset();ir('motorista');}
 
-// ---------- GRAVAR / LER PLANILHA ----------
-function gravarSheet(obj){fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)}).then(r=>r.text()).then(d=>{if(d!=='ok')alert('Erro ao salvar');});}
-function lerSheet(){return fetch(SCRIPT_URL).then(r=>r.json());}
-
-// ---------- CHEFE - LISTA ----------
-function listaPendente(){lerSheet().then(rows=>{const lista=rows.filter(r=>r.status==='pendente');let html='';if(!lista.length)html='<p class="alert alert-info">Nada pendente.</p>';lista.forEach(r=>{html+=`<div class="summary-card"><b>${r.tipo} #${r.id}</b><br>Cliente: ${r.cliente}<br>Qtd: ${r.qtd} pallets<br>Data: ${r.data}<br><label>Confirma:</label><input type="number" id="conf${r.id}" value="${r.qtd}" min="0"><br><button class="btn-success" onclick="confirmar(${r.id})">Confirmar</button></div>`;});$('pendente').innerHTML=html;});}
-function confirmar(id){const qtd=parseInt($('conf'+id).value);const dif=qtd-parseInt(document.querySelector(`#conf${id}`).placeholder);atualizarSheet(id,{qtdConf:qtd,status:'confirmado',dif});alert('Confirmado!'+(dif?' Divergência: '+dif+' pallets':''));listaPendente();}
-
-// ---------- ATUALIZAR LINHA ----------
-function atualizarSheet(id,upd){lerSheet().then(rows=>{const idx=rows.findIndex(r=>r.id==id);if(idx<0)return;Object.assign(rows[idx],upd);fetch(SCRIPT_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)}).then(r=>r.text()).then(d=>{if(d!=='ok')alert('Erro ao atualizar');});});}
-
-// ---------- ADMIN - RELATÓRIO ----------
-function relatorio(){lerSheet().then(rows=>{const tbody=$('tbl').tBodies[0];tbody.innerHTML='';let totS=0,totR=0;rows.forEach(r=>{if(r.status==='confirmado'){if(r.tipo==='saída')totS+=parseInt(r.qtdConf||r.qtd);else totR+=parseInt(r.qtdConf||r.qtd);}const tr=document.createElement('tr');tr.innerHTML=`<td>${r.data}</td><td>${r.cliente}</td><td>${r.tipo}</td><td>${r.qtdConf||r.qtd}</td><td>${r.status==='confirmado'?'<span class="badge badge-confirmed">✅</span>':'<span class="badge badge-pending">⏳</span>'}</td><td>${r.dif||'-'}</td>`;tbody.appendChild(tr);});$('resumo').innerHTML=`Total enviado: <b>${totS}</b> | Total retornado: <b>${totR}</b> | Faltando: <b>${totS-totR}</b>`;});}
+// ---------- LISTAR / RELAT ----------
+function lista(){fetch(SHEET_URL).then(r=>r.json()).then(rows=>{const lista=rows.filter(r=>r.status==='pendente');let html='';if(!lista.length)html='<p>Nada pendente.</p>';lista.forEach(r=>{html+=`<div class="summary-card"><b>${r.tipo} #${r.id}</b><br>Cliente: ${r.cliente}<br>Qtd: ${r.qtd} pallets<br>Data: ${r.data}<br><label>Confirma:</label><input type="number" id="conf${r.id}" value="${r.qtd}" min="0"><br><button onclick="confirma(${r.id})">Confirmar</button></div>`;});$('pendente').innerHTML=html;});}
+function confirma(id){const qtd=parseInt($('conf'+id).value);fetch(SHEET_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,qtdConf:qtd,status:'confirmado',dif:qtd-parseInt(document.querySelector(`#conf${id}`).placeholder)})}).then(r=>r.text()).then(d=>{alert('Confirmado!');lista();});}
+function relat(){fetch(SHEET_URL).then(r=>r.json()).then(rows=>{const tbody=$('tbl').tBodies[0];tbody.innerHTML='';let totS=0,totR=0;rows.forEach(r=>{if(r.status==='confirmado'){if(r.tipo==='saída')totS+=parseInt(r.qtdConf||r.qtd);else totR+=parseInt(r.qtdConf||r.qtd);}const tr=document.createElement('tr');tr.innerHTML=`<td>${r.data}</td><td>${r.cliente}</td><td>${r.tipo}</td><td>${r.qtdConf||r.qtd}</td><td>${r.status}</td>`;tbody.appendChild(tr);});$('resumo').innerHTML=`Total enviado: <b>${totS}</b> | Total retornado: <b>${totR}</b> | Faltando: <b>${totS-totR}</b>`;});}
 </script>
 </body>
 </html>
