@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sistema Pallets - Completo</title>
+<title>Pallets Cloud - GS</title>
 <style>
 body{font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;margin:0}
 h1,h2{color:#333}
@@ -32,7 +32,7 @@ th{background:#f8f9fa}
 
 <!-- LOGIN -->
 <div id="loginScreen" class="container">
-  <h1>Sistema de Controle de Pallets</h1>
+  <h1>Sistema Pallets - Cloud</h1>
   <div class="menu-grid">
     <button class="menu-item" onclick="ir('motorista')">🚛 Motorista</button>
     <button class="menu-item" onclick="ir('chefe')">👷 Chefe Pátio</button>
@@ -53,7 +53,6 @@ th{background:#f8f9fa}
   <h1>Registrar Saída</h1>
   <form onsubmit="registrar(event,'saída')">
     <label>Cliente</label><input id="sCliente" required>
-    <label>Produto</label><select id="sProd" required><option value="">Selecione</option><option>Tijolos</option><option>Telhas</option><option>Blocos</option><option>Outros</option></select>
     <label>Quantidade (pallets)</label><input id="sQtd" type="number" min="1" required>
     <button type="submit">Enviar</button><button type="button" onclick="voltar()">Voltar</button>
   </form>
@@ -64,7 +63,6 @@ th{background:#f8f9fa}
   <h1>Registrar Retorno</h1>
   <form onsubmit="registrar(event,'retorno')">
     <label>Cliente</label><input id="rCliente" required>
-    <label>Produto</label><select id="rProd" required><option value="">Selecione</option><option>Tijolos</option><option>Telhas</option><option>Blocos</option><option>Outros</option></select>
     <label>Quantidade (pallets)</label><input id="rQtd" type="number" min="1" required>
     <button type="submit">Enviar</button><button type="button" onclick="voltar()">Voltar</button>
   </form>
@@ -81,16 +79,17 @@ th{background:#f8f9fa}
 <div id="adminScreen" class="container hidden">
   <h1>Relatórios</h1>
   <div class="summary-card"><span id="resumo"></span></div>
-  <table id="tbl"><thead><tr><th>Data</th><th>Cliente</th><th>Prod</th><th>Tipo</th><th>Qtd</th><th>Status</th><th>Dif</th></tr></thead><tbody></tbody></table>
+  <table id="tbl"><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Qtd</th><th>Status</th><th>Dif</th></tr></thead><tbody></tbody></table>
   <button onclick="voltar()">Voltar</button>
 </div>
 
 <script>
-// ---------- VARIAVEIS GLOBAIS ----------
-const dbKey='palletsDB';let db=[];if(localStorage[dbKey])db=JSON.parse(localStorage[dbKey]);
+// ---------- CONFIGURAÇÕES DA PLANILHA ----------
+const SHEET_ID = '1-KpLQ7lGQV2bljN8nj4lV1WfC8hTfcbv8Fhba2sfW7M'; // ← ID da sua planilha
+const SHEET_NAME = 'Página1'; // ← nome da aba
+const SCRIPT_URL = `https://script.google.com/macros/s/AKfycbw8rJqSLJZ1szuXzLU4L3KAHrF1X2BqEPdZgRrzxw6l7C2J4sIhB8lT5O5lVqvI4h7pQ/exec?sheet=${SHEET_NAME}&id=${SHEET_ID`;
 
 // ---------- UTIL ----------
-function salvar(){localStorage[dbKey]=JSON.stringify(db);}
 function $(id){return document.getElementById(id);}
 function hideAll(){document.querySelectorAll('.container').forEach(d=>d.classList.add('hidden'));}
 function voltar(){hideAll();$('loginScreen').classList.remove('hidden');}
@@ -98,19 +97,21 @@ function ir(p){hideAll();$(p+'Screen').classList.remove('hidden');if(p==='chefe'
 function tela(t){hideAll();$(t+'Screen').classList.remove('hidden');}
 
 // ---------- REGISTRAR ----------
-function registrar(ev,tipo){ev.preventDefault();const m={
- id:Date.now(),tipo,cliente:tipo==='saída'?$('sCliente').value:$('rCliente').value,
- produto:tipo==='saída'?$('sProd').value:$('rProd').value,
- quantidade:tipo==='saída'?parseInt($('sQtd').value):parseInt($('rQtd').value),
- qtdConf:null,status:'pendente',data:new Date().toLocaleString('pt-BR'),dif:null
-};db.push(m);salvar();alert('Registrado! Aguarda confirmação.');ev.target.reset();ir('motorista');}
+function registrar(ev,tipo){ev.preventDefault();const cliente=tipo==='saída'?$('sCliente').value:$('rCliente').value);const qtd=tipo==='saída'?parseInt($('sQtd').value):parseInt($('rQtd').value);const data=new Date().toLocaleString('pt-BR');gravarSheet({id:Date.now(),data,cliente,tipo,qtd,status:'pendente',dif:''});alert('Registrado na nuvem! Aguarda confirmação.');ev.target.reset();ir('motorista');}
+
+// ---------- GRAVAR / LER PLANILHA ----------
+function gravarSheet(obj){fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)}).then(r=>r.text()).then(d=>{if(d!=='ok')alert('Erro ao salvar');});}
+function lerSheet(){return fetch(SCRIPT_URL).then(r=>r.json());}
 
 // ---------- CHEFE - LISTA ----------
-function listaPendente(){const lista=db.filter(r=>r.status==='pendente');let html='';if(!lista.length)html='<p class="alert alert-info">Nada pendente.</p>';lista.forEach(r=>{html+=`<div class="summary-card"><b>${r.tipo} #${r.id}</b><br>Cliente: ${r.cliente}<br>Produto: ${r.produto}<br>Qtd: ${r.quantidade} pallets<br>Data: ${r.data}<br><label>Confirma:</label><input type="number" id="conf${r.id}" value="${r.quantidade}" min="0"><br><button class="btn-success" onclick="confirmar(${r.id})">Confirmar</button></div>`;});$('pendente').innerHTML=html;}
-function confirmar(id){const r=db.find(x=>x.id===id);r.qtdConf=parseInt($('conf'+id).value);r.status='confirmado';r.dif=r.qtdConf-r.quantidade;salvar();alert('Confirmado!'+(r.dif?' Divergência: '+r.dif+' pallets':''));listaPendente();}
+function listaPendente(){lerSheet().then(rows=>{const lista=rows.filter(r=>r.status==='pendente');let html='';if(!lista.length)html='<p class="alert alert-info">Nada pendente.</p>';lista.forEach(r=>{html+=`<div class="summary-card"><b>${r.tipo} #${r.id}</b><br>Cliente: ${r.cliente}<br>Qtd: ${r.qtd} pallets<br>Data: ${r.data}<br><label>Confirma:</label><input type="number" id="conf${r.id}" value="${r.qtd}" min="0"><br><button class="btn-success" onclick="confirmar(${r.id})">Confirmar</button></div>`;});$('pendente').innerHTML=html;});}
+function confirmar(id){const qtd=parseInt($('conf'+id).value);const dif=qtd-parseInt(document.querySelector(`#conf${id}`).placeholder);atualizarSheet(id,{qtdConf:qtd,status:'confirmado',dif});alert('Confirmado!'+(dif?' Divergência: '+dif+' pallets':''));listaPendente();}
+
+// ---------- ATUALIZAR LINHA ----------
+function atualizarSheet(id,upd){lerSheet().then(rows=>{const idx=rows.findIndex(r=>r.id==id);if(idx<0)return;Object.assign(rows[idx],upd);fetch(SCRIPT_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)}).then(r=>r.text()).then(d=>{if(d!=='ok')alert('Erro ao atualizar');});});}
 
 // ---------- ADMIN - RELATÓRIO ----------
-function relatorio(){const tbody=$('tbl').tBodies[0];tbody.innerHTML='';let totS=0,totR=0;db.forEach(r=>{if(r.status==='confirmado'){if(r.tipo==='saída')totS+=r.qtdConf;else totR+=r.qtdConf;}const tr=document.createElement('tr');tr.innerHTML=`<td>${r.data}</td><td>${r.cliente}</td><td>${r.produto}</td><td>${r.tipo}</td><td>${r.qtdConf||r.quantidade}</td><td>${r.status==='confirmado'?'<span class="badge badge-confirmed">✅</span>':'<span class="badge badge-pending">⏳</span>'}</td><td>${r.dif?(r.dif>0?'+'+r.dif:r.dif):'-'}</td>`;tbody.appendChild(tr);});$('resumo').innerHTML=`Total enviado: <b>${totS}</b> | Total retornado: <b>${totR}</b> | Faltando: <b>${totS-totR}</b>`;}
+function relatorio(){lerSheet().then(rows=>{const tbody=$('tbl').tBodies[0];tbody.innerHTML='';let totS=0,totR=0;rows.forEach(r=>{if(r.status==='confirmado'){if(r.tipo==='saída')totS+=parseInt(r.qtdConf||r.qtd);else totR+=parseInt(r.qtdConf||r.qtd);}const tr=document.createElement('tr');tr.innerHTML=`<td>${r.data}</td><td>${r.cliente}</td><td>${r.tipo}</td><td>${r.qtdConf||r.qtd}</td><td>${r.status==='confirmado'?'<span class="badge badge-confirmed">✅</span>':'<span class="badge badge-pending">⏳</span>'}</td><td>${r.dif||'-'}</td>`;tbody.appendChild(tr);});$('resumo').innerHTML=`Total enviado: <b>${totS}</b> | Total retornado: <b>${totR}</b> | Faltando: <b>${totS-totR}</b>`;});}
 </script>
 </body>
 </html>
