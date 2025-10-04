@@ -85,7 +85,18 @@ let listener = null;
 function $(id){return document.getElementById(id);}
 function hideAll(){document.querySelectorAll('.container').forEach(d=>d.classList.add('hidden'));}
 function voltar(){hideAll();$('loginScreen').classList.remove('hidden'); pararListener();}
-function ir(p){hideAll();$(p+'Screen').classList.remove('hidden'); pararListener(); if(p==='chefe') iniciarListener('chefe'); if(p==='admin') iniciarListener('admin');}
+function ir(p){
+  hideAll();
+  $(p+'Screen').classList.remove('hidden');
+  pararListener();
+  if(p==='chefe' || p==='admin'){
+    carregarDB().then(()=>{
+      if(p==='chefe') lista();
+      if(p==='admin') relat();
+    });
+    iniciarListener(p);
+  }
+}
 function tela(t){hideAll();$(t+'Screen').classList.remove('hidden');}
 
 // ================= FIREBASE =================
@@ -194,11 +205,3 @@ function iniciarListener(modo){
     if(modo==='chefe') lista();
     if(modo==='admin') relat();
   }, 2000); // atualiza a cada 2 segundos
-}
-
-function pararListener(){
-  if(listener){clearInterval(listener); listener=null;}
-}
-</script>
-</body>
-</html>
