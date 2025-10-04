@@ -1,3 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pallets Local + Export</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;margin:0}
+.container{max-width:700px;margin:auto;background:#fff;padding:25px;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,.15)}
+.hidden{display:none}
+button{background:#007bff;color:#fff;border:none;padding:12px 20px;border-radius:4px;margin:6px 0;width:100%;font-size:18px;cursor:pointer;touch-action:manipulation}
+button:active{background:#0056b3}
+input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:4px}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.menu-item{background:#f8f9fa;padding:20px;border-radius:6px;text-align:center;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.2)}
+.menu-item:active{background:#e9ecef}
+.summary-card{background:#f8f9fa;padding:15px;margin-bottom:10px;border-radius:6px}
+.alert{padding:10px;margin-bottom:10px;border-radius:5px}
+.alert-info{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="container">
+  <h1>Pallets Local + Export</h1>
+  <div class="menu-grid">
+    <button class="menu-item" onclick="ir('motorista')">🚛 Motorista</button>
+    <button class="menu-item" onclick="ir('chefe')">👷 Chefe</button>
+    <button class="menu-item" onclick="ir('admin')">🔧 Admin</button>
+  </div>
+</div>
+
+<!-- MOTORISTA -->
+<div id="motoristaScreen" class="container hidden">
+  <h1>Motorista</h1>
+  <button onclick="tela('saida')">📤 Registrar Saída</button>
+  <button onclick="tela('retorno')">📥 Registrar Retorno</button>
+  <button onclick="voltar()">🚪 Voltar</button>
+</div>
+
+<!-- REGISTRAR SAÍDA -->
+<div id="saidaScreen" class="container hidden">
+  <h1>Registrar Saída</h1>
+  <form onsubmit="registrar(event,'saída')">
+    <label>Cliente</label><input id="sCliente" required>
+    <label>Quantidade (pallets)</label><input id="sQtd" type="number" min="1" required>
+    <button type="submit">Enviar</button><button type="button" onclick="voltar()">Voltar</button>
+  </form>
+</div>
+
+<!-- REGISTRAR RETORNO -->
+<div id="retornoScreen" class="container hidden">
+  <h1>Registrar Retorno</h1>
+  <form onsubmit="registrar(event,'retorno')">
+    <label>Cliente</label><input id="rCliente" required>
+    <label>Quantidade (pallets)</label><input id="rQtd" type="number" min="1" required>
+    <button type="submit">Enviar</button><button type="button" onclick="voltar()">Voltar</button>
+  </form>
+</div>
+
+<!-- CHEFE -->
+<div id="chefeScreen" class="container hidden">
+  <h1>Chefe do Pátio</h1>
+  <div id="pendente"></div>
+  <button onclick="voltar()">Voltar</button>
+</div>
+
+<!-- ADMIN -->
+<div id="adminScreen" class="container hidden">
+  <h1>Relatório</h1>
+  <div id="resumo"></div>
+  <table id="tbl"><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Qtd</th><th>Status</th></tr></thead><tbody></tbody></table>
+  <button onclick="exportExcel()">📥 Exportar Excel</button>
+  <button onclick="voltar()">Voltar</button>
+</div>
+
+<script>
+// ---------- VARIAVEIS GLOBAIS ----------
+const dbKey='palletsDB';let db=[];if(localStorage[dbKey])db=JSON.parse(localStorage[dbKey]);
+
+// ---------- UTIL ----------
+function $(id){return document.getElementById(id);}
+function hideAll(){document.querySelectorAll('.container').forEach(d=>d.classList.add('hidden'));}
+function voltar(){hideAll();$('loginScreen').classList.remove('hidden');}
+function ir(p){
+  hideAll();
+  $(p+'Screen').classList.remove('hidden');
+  if(p==='chefe')lista();
+  if(p==='admin')relat();
+}
+function tela(t){hideAll();$(t+'Screen').classList.remove('hidden');}
+
+// ---------- REGISTRAR ----------
+function registrar(ev,tipo){
+  ev.preventDefault();
+  const m={
+    id:Date.now(),
+    tipo,
+    cliente:tipo==='saída'?$('sCliente').value:$('rCliente').value,
+    quantidade:tipo==='saída'?parseInt($('sQtd').value):parseInt($('rQtd').value),
+    dataHora:new Date().toLocaleString('pt-BR'),
+    status:'pendente',
+    qtdConf:null,
+    dif:null
+  };
+  db.push(m);
+  localStorage[dbKey]=JSON.stringify(db);
+  alert('Salvo localmente! Aguarda confirmação.');
+  ev.target.reset();
+  ir('motorista');
+}
+
+// ---------- LISTAR / RELAT ----------
+function lista(){
+  const pendentes=db.filter(r=>r.status==='pendente');
+  let html='';
+  if(!pendentes.length)html='<p class="alert alert-info">Nada pendente.</p>';
+  pendentes.forEach(r=>{
+    html+=`<div class="summary-card"><b>${r.tipo} #${r.id}</b><br>Cliente: ${r.cliente}<br>Qtd: ${r.quantidade} pallets<br>Data: ${r.dataHora}<br><label>Confirma:</label><input type="number" id="conf${r.id}" value="${r.quantidade}" min="0"><br><button class="btn-success" onclick="confirmar(${r.id})">Confirmar</button></div>`;
+  });
+  $('pendente').innerHTML=html;
+}
+function confirmar(id){
+  const r=db.find(x=>x.id===id);
+  const qtdConf=parseInt($('conf'+id).value);
+  r.qtdConf=qtdConf;
+  r.status='confirmado';
+  r.dif=qtdConf-r.quantidade;
+  localStorage[dbKey]=JSON.stringify(db);
+  alert('Confirmado!'+(r.dif?' Divergência: '+r.dif+' pallets':''));
+  lista();
+}
+function relat(){
+  const tbody=$('tbl').tBodies[0];
+  tbody.innerHTML='';
+  let totS=0,totR=0;
+  db.forEach(r=>{
+    if(r.status==='confirmado'){
+      if(r.tipo==='saída')totS+=r.qtdConf;
+      else totR+=r.qtdConf;
+    }
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.dataHora}</td><td>${r.cliente}</td><td>${r.tipo}</td><td>${r.qtdConf||r.quantidade}</td><td>${r.status==='confirmado'?'✅':'⏳'}</td>`;
+    tbody.appendChild(tr);
+  });
+  $('resumo').innerHTML=`Total enviado: <b>${totS}</b> | Total retornado: <b>${totR}</b> | Faltando: <b>${totS-totR}</b>`;
+}
+
+// ---------- EXPORTAR EXCEL ----------
+function exportExcel(){
+  let csv='Data\tCliente\tTipo\tQtd Registrada\tQtd Confirmada\tStatus\tDiferença\n';
+  db.forEach(r=>{csv+=`${r.dataHora}\t${r.cliente}\t${r.tipo}\t${r.quantidade}\t${r.qtdConf||''}\t${r.status}\t${r.dif||''}\n`;});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download='pallets_'+new Date().toISOString().slice(0,10)+'.csv';
+  link.click();
+}
+</script>
+</body>
+</html>
+ 
+Então esse é meu aplicativo funcionando, o que devo fazer pra que 2/4 celulares acessem ele e possam colocar informações 
 <script>
 const DB_URL = 'https://pallets-5dcd8-default-rtdb.firebaseio.com';
 let db = [];
