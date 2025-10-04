@@ -15,6 +15,8 @@ input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:4
 .menu-item{background:#f8f9fa;padding:20px;border-radius:6px;text-align:center;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.2)}
 .menu-item:active{background:#e9ecef}
 .summary-card{background:#f8f9fa;padding:15px;margin-bottom:10px;border-radius:6px}
+.alert{padding:10px;margin-bottom:10px;border-radius:5px}
+.alert-info{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb}
 </style>
 </head>
 <body>
@@ -73,8 +75,10 @@ input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:4
 </div>
 
 <script>
-// ---------- CONFIGURAÇÕES ----------
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbw8rJqSLJZ1szuXzLU4L3KAHrF1X2BqEPdZgRrzxw6l7C2J4sIhB8lT5O5lVqvI4h7pQ/exec';
+// ---------- CONFIG PLANILHA ----------
+const SHEET_ID = '1-zcX0EfRy8pkbVrWgq_qFNSRlP15WoPMdCCyBi75UvA'; // ← seu ID
+const SHEET_NAME = 'Página1';
+const SHEET_URL = `https://script.google.com/macros/s/AKfycbw8rJqSLJZ1szuXzLU4L3KAHrF1X2BqEPdZgRrzxw6l7C2J4sIhB8lT5O5lVqvI4h7pQ/exec?sheet=${SHEET_NAME}&id=${SHEET_ID}`;
 
 function $(id){return document.getElementById(id);}
 function hideAll(){document.querySelectorAll('.container').forEach(d=>d.classList.add('hidden'));}
